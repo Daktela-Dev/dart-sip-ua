@@ -1,34 +1,34 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:sip_ua/src/event_manager/events.dart';
+import './event_manager/events.dart';
+import './transports/socket_interface.dart';
 import 'exceptions.dart' as Exceptions;
 import 'logger.dart';
-import 'socket.dart' as Socket;
 import 'stack_trace_nj.dart';
 import 'timers.dart';
-import 'transports/websocket_interface.dart';
 import 'utils.dart';
 
-/**
- * Constants
- */
-class C {
-  // Transport status.
-  static const int STATUS_CONNECTED = 0;
-  static const int STATUS_CONNECTING = 1;
-  static const int STATUS_DISCONNECTED = 2;
+enum TransportStatus { connected, connecting, disconnected }
 
-  // Socket status.
-  static const int SOCKET_STATUS_READY = 0;
-  static const int SOCKET_STATUS_ERROR = 1;
+enum SocketStatus { ready, error }
 
-  // Recovery options.
-  static const Map<String, int> recovery_options = <String, int>{
-    'min_interval': 2, // minimum interval in seconds between recover attempts
-    'max_interval': 30 // maximum interval in seconds between recover attempts
-  };
+class SocketInfo {
+  SocketInfo({
+    required this.socket,
+    required this.weight,
+    required this.status,
+  });
+
+  SIPUASocketInterface socket;
+  int weight;
+  SocketStatus status;
 }
+
+const Map<String, int> defaultRecoveryOptions = <String, int>{
+  'min_interval': 2, // minimum interval in seconds between recover attempts
+  'max_interval': 30 // maximum interval in seconds between recover attempts
+};
 
 /*
  * Manages one or multiple DartSIP.Socket instances.
@@ -36,39 +36,47 @@ class C {
  *
  * @socket DartSIP::Socket instance
  */
-class Transport {
-  Transport(List<WebSocketInterface> sockets, [Map<String, int> recovery_options = C.recovery_options]) {
-    logger.d('new()');
+class SocketTransport {
+  SocketTransport(
+    List<SIPUASocketInterface>? sockets, [
+    Map<String, int> recovery_options = defaultRecoveryOptions,
+  ]) {
+    logger.d('Socket Transport new()');
 
     _recovery_options = recovery_options;
 
     // We must recieve at least 1 socket
-    if (sockets.length == 0) {
-      throw Exceptions.TypeError('invalid argument: sockets');
+    if (sockets!.isEmpty) {
+      throw Exceptions.TypeError(
+          'invalid argument: Must recieve atleast 1 web socket');
     }
 
-    for (WebSocketInterface socket in sockets) {
-      _socketsMap.add(<String, dynamic>{'socket': socket, 'weight': socket.weight ?? 0, 'status': C.SOCKET_STATUS_READY});
+    for (final SIPUASocketInterface socket in sockets) {
+      _sockets.add(SocketInfo(
+        socket: socket,
+        weight: socket.weight ?? 0,
+        status: SocketStatus.ready,
+      ));
     }
-
     // Get the socket with higher weight.
     _getSocket();
   }
 
-  int status = C.STATUS_DISCONNECTED;
+  TransportStatus status = TransportStatus.disconnected;
   // Current socket.
-  late WebSocketInterface socket;
+  late SIPUASocketInterface socket;
   // Socket collection.
-  final List<Map<String, dynamic>> _socketsMap = <Map<String, dynamic>>[];
+  final List<SocketInfo> _sockets = <SocketInfo>[];
   late Map<String, int> _recovery_options;
   int _recover_attempts = 0;
   Timer? _recovery_timer;
   bool _close_requested = false;
 
-  late void Function(WebSocketInterface? socket, int? attempts) onconnecting;
-  late void Function(WebSocketInterface? socket, ErrorCause cause) ondisconnect;
-  late void Function(Transport transport) onconnect;
-  late void Function(Transport transport, String messageData) ondata;
+  late void Function(SIPUASocketInterface? socket, int? attempts) onconnecting;
+  late void Function(SIPUASocketInterface? socket, ErrorCause cause)
+      ondisconnect;
+  late void Function(SocketTransport transport) onconnect;
+  late void Function(SocketTransport transport, String messageData) ondata;
 
   /**
    * Instance Methods
@@ -81,7 +89,7 @@ class Transport {
   String? get sip_uri => socket.sip_uri;
 
   void connect() {
-    logger.d('connect()');
+    logger.d('Transport connect()');
 
     if (isConnected()) {
       logger.d('Transport is already connected');
@@ -94,7 +102,7 @@ class Transport {
     }
 
     _close_requested = false;
-    status = C.STATUS_CONNECTING;
+    status = TransportStatus.connecting;
     onconnecting(socket, _recover_attempts);
 
     if (!_close_requested) {
@@ -108,11 +116,11 @@ class Transport {
   }
 
   void disconnect() {
-    logger.d('close()');
+    logger.d('Transport close()');
 
     _close_requested = true;
     _recover_attempts = 0;
-    status = C.STATUS_DISCONNECTED;
+    status = TransportStatus.disconnected;
 
     // Clear recovery_timer.
     if (_recovery_timer != null) {
@@ -122,31 +130,39 @@ class Transport {
 
     // Unbind socket event callbacks.
     socket.onconnect = () => () {};
-    socket.ondisconnect = (WebSocketInterface socket, bool error, int? closeCode, String? reason) => () {};
+    socket.ondisconnect = (SIPUASocketInterface socket, bool error,
+            int? closeCode, String? reason) =>
+        () {};
     socket.ondata = (dynamic data) => () {};
 
     socket.disconnect();
-    ondisconnect(socket, ErrorCause(cause: 'disconnect', status_code: 0, reason_phrase: 'close by local'));
+    ondisconnect(
+      socket,
+      ErrorCause(
+          cause: 'disconnect', status_code: 0, reason_phrase: 'close by local'),
+    );
   }
 
   bool send(dynamic data) {
-    logger.d('send()');
+    logger.d('Socket Transport send()');
+
     if (!isConnected()) {
-      logger.e('unable to send message, transport is not connected. Current state is $status', null, StackTraceNJ());
+      logger.e(
+          'unable to send message, transport is not connected. Current state is $status',
+          stackTrace: StackTraceNJ());
+
       return false;
     }
-
     String message = data.toString();
-    //logger.d('sending message:\n\n$message\n');
     return socket.send(message);
   }
 
   bool isConnected() {
-    return status == C.STATUS_CONNECTED;
+    return status == TransportStatus.connected;
   }
 
   bool isConnecting() {
-    return status == C.STATUS_CONNECTING;
+    return status == TransportStatus.connecting;
   }
 
   /**
@@ -164,7 +180,8 @@ class Transport {
       k = _recovery_options['max_interval']!;
     }
 
-    logger.d('reconnection attempt: $_recover_attempts. next connection attempt in $k seconds');
+    logger.d(
+        'reconnection attempt: $_recover_attempts. next connection attempt in $k seconds');
 
     _recovery_timer = setTimeout(() {
       if (!_close_requested && !(isConnected() || isConnecting())) {
@@ -182,28 +199,28 @@ class Transport {
   void _getSocket() {
     // If we dont have at least 1 socket to try and use, thiw will loop endlessly
 
-    if (_socketsMap.length == 0) {
+    if (_sockets.isEmpty) {
       throw Exceptions.TypeError('invalid argument: too few sockets');
     }
 
-    List<Map<String, dynamic>> candidates = <Map<String, dynamic>>[];
+    List<SocketInfo> candidates = <SocketInfo>[];
 
-    for (Map<String, dynamic> socket in _socketsMap) {
-      if (socket['status'] == C.SOCKET_STATUS_ERROR) {
+    for (final SocketInfo socket in _sockets) {
+      if (socket.status == SocketStatus.error) {
         return; // continue the array iteration
       } else if (candidates.isEmpty) {
         candidates.add(socket);
-      } else if (socket['weight'] > candidates[0]['weight']) {
-        candidates = <Map<String, dynamic>>[socket];
-      } else if (socket['weight'] == candidates[0]['weight']) {
+      } else if (socket.weight > candidates[0].weight) {
+        candidates = <SocketInfo>[socket];
+      } else if (socket.weight == candidates[0].weight) {
         candidates.add(socket);
       }
     }
 
     if (candidates.isEmpty) {
       // All sockets have failed. reset sockets status.
-      for (Map<String, dynamic> socket in _socketsMap) {
-        socket['status'] = C.SOCKET_STATUS_READY;
+      for (final SocketInfo socket in _sockets) {
+        socket.status = SocketStatus.ready;
       }
       // Get next available socket.
       _getSocket();
@@ -212,7 +229,7 @@ class Transport {
 
     num idx = (Math.randomDouble() * candidates.length).floor();
 
-    socket = candidates[idx as int]['socket'];
+    socket = candidates[idx as int].socket;
   }
 
   /**
@@ -221,7 +238,7 @@ class Transport {
 
   void _onConnect() {
     _recover_attempts = 0;
-    status = C.STATUS_CONNECTED;
+    status = TransportStatus.connected;
 
     // Clear recovery_timer.
     if (_recovery_timer != null) {
@@ -231,18 +248,22 @@ class Transport {
     onconnect(this);
   }
 
-  void _onDisconnect(WebSocketInterface socket, bool error, int? closeCode, String? reason) {
-    status = C.STATUS_DISCONNECTED;
-    ondisconnect(socket, ErrorCause(cause: 'error', status_code: closeCode, reason_phrase: reason));
+  void _onDisconnect(
+      SIPUASocketInterface socket, bool error, int? closeCode, String? reason) {
+    status = TransportStatus.disconnected;
+    ondisconnect(
+        socket,
+        ErrorCause(
+            cause: 'error', status_code: closeCode, reason_phrase: reason));
 
     if (_close_requested) {
       return;
     }
     // Update socket status.
     else {
-      for (Map<String, dynamic> socket in _socketsMap) {
-        if (socket == socket['socket']) {
-          socket['status'] = C.SOCKET_STATUS_ERROR;
+      for (final SocketInfo s in _sockets) {
+        if (socket == s.socket) {
+          s.status = SocketStatus.error;
         }
       }
     }
@@ -254,18 +275,21 @@ class Transport {
     // CRLF Keep Alive response from server. Ignore it.
     if (data == '\r\n') {
       logger.d('received message with CRLF Keep Alive response');
+
       return;
     }
+
     // Binary message.
     else if (data is! String) {
       try {
         data = String.fromCharCodes(data);
       } catch (evt) {
-        logger.d('received binary message [${data.runtimeType}]failed to be converted into string,'
-            ' message discarded');
+        logger.d(
+          'received binary message [${data.runtimeType}]failed to be converted into string,'
+          ' message discarded',
+        );
         return;
       }
-
       logger.d('received binary message:\n\n$data\n');
     }
 

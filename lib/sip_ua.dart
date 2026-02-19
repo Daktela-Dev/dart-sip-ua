@@ -1,4 +1,7 @@
-/// only expose the bare minimum of internals required
-export 'src/enum_helper.dart';
+export 'src/enums.dart';
+export 'src/sip_message.dart';
 export 'src/sip_ua_helper.dart';
-export 'src/transports/websocket_interface.dart';
+export 'src/transport_type.dart';
+export 'src/transports/tcp_socket.dart';
+export 'src/transports/web_socket.dart';
+export 'src/uri.dart';

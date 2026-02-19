@@ -1,11 +1,11 @@
-import 'package:sip_ua/sip_ua.dart';
+import '../sip_ua.dart';
 import 'constants.dart' as DartSIP_C;
 import 'constants.dart';
 import 'exceptions.dart' as Exceptions;
 import 'grammar.dart';
 import 'logger.dart';
-import 'socket.dart' as Socket;
-import 'uri.dart';
+import 'transports/socket_interface.dart';
+import 'transports/web_socket.dart';
 import 'utils.dart' as Utils;
 
 // Default settings.
@@ -18,8 +18,8 @@ class Settings {
 
   // SIP account.
   String? display_name;
-  dynamic uri;
-  dynamic contact_uri;
+  URI? uri;
+  URI? contact_uri;
   String user_agent = DartSIP_C.USER_AGENT;
 
   // SIP instance id (GRUU).
@@ -37,13 +37,16 @@ class Settings {
   bool? register = true;
   int? register_expires = 600;
   dynamic registrar_server;
+  List<String>? register_extra_headers;
   Map<String, dynamic>? register_extra_contact_uri_params;
 
   // Dtmf mode
   DtmfMode dtmf_mode = DtmfMode.INFO;
 
+  TransportType? transportType;
+
   // Connection options.
-  List<WebSocketInterface>? sockets = <WebSocketInterface>[];
+  List<SIPUASocketInterface>? sockets = <SIPUASocketInterface>[];
   int connection_recovery_max_interval = 30;
   int connection_recovery_min_interval = 2;
 
@@ -61,24 +64,31 @@ class Settings {
   /// ICE Gathering Timeout (in millisecond).
   int ice_gathering_timeout = 500;
 
+  /// Call statistics in the log
+  bool log_call_statistics = false;
+
+  bool terminateOnAudioMediaPortZero = false;
+
   /// Sip Message Delay (in millisecond) ( default 0 ).
   int sip_message_delay = 0;
 }
 
 // Configuration checks.
 class Checks {
-  Map<String, Null Function(Settings src, Settings? dst)> mandatory = <String, Null Function(Settings src, Settings? dst)>{
+  Map<String, Null Function(Settings src, Settings? dst)> mandatory =
+      <String, Null Function(Settings src, Settings? dst)>{
     'sockets': (Settings src, Settings? dst) {
-      List<WebSocketInterface>? sockets = src.sockets;
+      List<SIPUASocketInterface>? sockets = src.sockets;
+
       /* Allow defining sockets parameter as:
        *  Socket: socket
        *  List of Socket: [socket1, socket2]
        *  List of Objects: [{socket: socket1, weight:1}, {socket: Socket2, weight:0}]
        *  List of Objects and Socket: [{socket: socket1}, socket2]
        */
-      List<WebSocketInterface> copy = <WebSocketInterface>[];
-      if (sockets is List && sockets!.length > 0) {
-        for (WebSocketInterface socket in sockets) {
+      List<SIPUASocketInterface> copy = <SIPUASocketInterface>[];
+      if (sockets is List && sockets!.isNotEmpty) {
+        for (SIPUASocketInterface socket in sockets) {
           copy.add(socket);
         }
       } else {
@@ -88,24 +98,25 @@ class Checks {
       dst!.sockets = copy;
     },
     'uri': (Settings src, Settings? dst) {
-      dynamic uri = src.uri;
       if (src.uri == null && dst!.uri == null) {
         throw Exceptions.ConfigurationError('uri', null);
       }
-      if (!uri.contains(RegExp(r'^sip:', caseSensitive: false))) {
-        uri = '${DartSIP_C.SIP}:$uri';
+      URI uri = src.uri!;
+      if (!uri.toString().contains(RegExp(r'^sip:', caseSensitive: false))) {
+        uri.scheme = DartSIP_C.SIP;
       }
-      dynamic parsed = URI.parse(uri);
-      if (parsed == null) {
-        throw Exceptions.ConfigurationError('uri', parsed);
-      } else if (parsed.user == null) {
-        throw Exceptions.ConfigurationError('uri', parsed);
-      } else {
-        dst!.uri = parsed;
+      dst!.uri = uri;
+    },
+    'transport_type': (Settings src, Settings? dst) {
+      dynamic transportType = src.transportType;
+      if (src.transportType == null && dst!.transportType == null) {
+        throw Exceptions.ConfigurationError('transport type', null);
       }
+      dst!.transportType = transportType;
     }
   };
-  Map<String, Null Function(Settings src, Settings? dst)> optional = <String, Null Function(Settings src, Settings? dst)>{
+  Map<String, Null Function(Settings src, Settings? dst)> optional =
+      <String, Null Function(Settings src, Settings? dst)>{
     'authorization_user': (Settings src, Settings? dst) {
       String? authorization_user = src.authorization_user;
       if (authorization_user == null) return;
@@ -121,17 +132,21 @@ class Checks {
       dst!.user_agent = user_agent;
     },
     'connection_recovery_max_interval': (Settings src, Settings? dst) {
-      int connection_recovery_max_interval = src.connection_recovery_max_interval;
+      int connection_recovery_max_interval =
+          src.connection_recovery_max_interval;
       if (connection_recovery_max_interval == null) return;
       if (connection_recovery_max_interval > 0) {
-        dst!.connection_recovery_max_interval = connection_recovery_max_interval;
+        dst!.connection_recovery_max_interval =
+            connection_recovery_max_interval;
       }
     },
     'connection_recovery_min_interval': (Settings src, Settings? dst) {
-      int connection_recovery_min_interval = src.connection_recovery_min_interval;
+      int connection_recovery_min_interval =
+          src.connection_recovery_min_interval;
       if (connection_recovery_min_interval == null) return;
       if (connection_recovery_min_interval > 0) {
-        dst!.connection_recovery_min_interval = connection_recovery_min_interval;
+        dst!.connection_recovery_min_interval =
+            connection_recovery_min_interval;
       }
     },
     'contact_uri': (Settings src, Settings? dst) {
@@ -219,10 +234,17 @@ class Checks {
         dst!.registrar_server = parsed;
       }
     },
+    'register_extra_headers': (Settings src, Settings? dst) {
+      List<String>? register_extra_headers = src.register_extra_headers;
+      if (register_extra_headers == null) return;
+      dst?.register_extra_headers = register_extra_headers;
+    },
     'register_extra_contact_uri_params': (Settings src, Settings? dst) {
-      Map<String, dynamic>? register_extra_contact_uri_params = src.register_extra_contact_uri_params;
+      Map<String, dynamic>? register_extra_contact_uri_params =
+          src.register_extra_contact_uri_params;
       if (register_extra_contact_uri_params == null) return;
-      dst!.register_extra_contact_uri_params = register_extra_contact_uri_params;
+      dst!.register_extra_contact_uri_params =
+          register_extra_contact_uri_params;
     },
     'use_preloaded_route': (Settings src, Settings? dst) {
       bool use_preloaded_route = src.use_preloaded_route;
@@ -236,6 +258,9 @@ class Checks {
     },
     'ice_gathering_timeout': (Settings src, Settings? dst) {
       dst!.ice_gathering_timeout = src.ice_gathering_timeout;
+    },
+    'log_call_statistics': (Settings src, Settings? dst) {
+      dst!.log_call_statistics = src.log_call_statistics;
     }
   };
 }
@@ -245,18 +270,20 @@ final Checks checks = Checks();
 void load(Settings src, Settings? dst) {
   try {
     // Check Mandatory parameters.
-    checks.mandatory.forEach((String parameter, Null Function(Settings, Settings?) fun) {
+    checks.mandatory
+        .forEach((String parameter, Null Function(Settings, Settings?) fun) {
       logger.i('Check mandatory parameter => $parameter.');
       fun(src, dst);
     });
 
     // Check Optional parameters.
-    checks.optional.forEach((String parameter, Null Function(Settings, Settings?) fun) {
+    checks.optional
+        .forEach((String parameter, Null Function(Settings, Settings?) fun) {
       logger.d('Check optional parameter => $parameter.');
       fun(src, dst);
     });
   } catch (e) {
     logger.e('Failed to load config: ${e.toString()}');
-    throw e;
+    rethrow;
   }
 }
