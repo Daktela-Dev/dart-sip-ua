@@ -53,7 +53,7 @@
 
 - Fixed renegotiation if statement for useUpdate
 
-[1.0.3]
+[1.0.3] (Our first fork version, original package version: 0.5.6 )
 
 - Expose \_to_tag and \_from_tag from RTCSession
 
