@@ -29,11 +29,11 @@ function add_permission_label() {
     echo ""
     echo "Add permission labels to iOS."
     echo ""
-    python add-line.py -i ../ios/Runner/Info.plist -s '<key>UILaunchStoryboardName</key>' -t '	<key>NSCameraUsageDescription</key>'
-    python add-line.py -i ../ios/Runner/Info.plist -s '<key>UILaunchStoryboardName</key>' -t '	<string>$(PRODUCT_NAME) Camera Usage!</string>'
-    python add-line.py -i ../ios/Runner/Info.plist -s '<key>UILaunchStoryboardName</key>' -t '	<key>NSMicrophoneUsageDescription</key>'
-    python add-line.py -i ../ios/Runner/Info.plist -s '<key>UILaunchStoryboardName</key>' -t '	<string>$(PRODUCT_NAME) Microphone Usage!</string>'
-    python add-line.py -i ../ios/Podfile -s "# platform :ios, '9.0'" -t "platform :ios, '10.0'" -r
+    python3 add-line.py -i ../ios/Runner/Info.plist -s '<key>UILaunchStoryboardName</key>' -t '	<key>NSCameraUsageDescription</key>'
+    python3 add-line.py -i ../ios/Runner/Info.plist -s '<key>UILaunchStoryboardName</key>' -t '	<string>$(PRODUCT_NAME) Camera Usage!</string>'
+    python3 add-line.py -i ../ios/Runner/Info.plist -s '<key>UILaunchStoryboardName</key>' -t '	<key>NSMicrophoneUsageDescription</key>'
+    python3 add-line.py -i ../ios/Runner/Info.plist -s '<key>UILaunchStoryboardName</key>' -t '	<string>$(PRODUCT_NAME) Microphone Usage!</string>'
+    python3 add-line.py -i ../ios/Podfile -s "# platform :ios, '9.0'" -t "platform :ios, '10.0'" -r
     echo ""
     echo "Add permission labels to AndroidManifest.xml."
     echo ""
@@ -49,24 +49,24 @@ function add_permission_label() {
     echo ""
     echo "Add permission labels to macOS."
     echo ""
-    python add-line.py -i ../macos/Runner/Info.plist -s '<key>CFBundleShortVersionString</key>' -t '	<key>NSCameraUsageDescription</key>'
-    python add-line.py -i ../macos/Runner/Info.plist -s '<key>CFBundleShortVersionString</key>' -t '	<string>$(PRODUCT_NAME) Camera Usage!</string>'
-    python add-line.py -i ../macos/Runner/Info.plist -s '<key>CFBundleShortVersionString</key>' -t '	<key>NSMicrophoneUsageDescription</key>'
-    python add-line.py -i ../macos/Runner/Info.plist -s '<key>CFBundleShortVersionString</key>' -t '	<string>$(PRODUCT_NAME) Microphone Usage!</string>'
+    python3 add-line.py -i ../macos/Runner/Info.plist -s '<key>CFBundleShortVersionString</key>' -t '	<key>NSCameraUsageDescription</key>'
+    python3 add-line.py -i ../macos/Runner/Info.plist -s '<key>CFBundleShortVersionString</key>' -t '	<string>$(PRODUCT_NAME) Camera Usage!</string>'
+    python3 add-line.py -i ../macos/Runner/Info.plist -s '<key>CFBundleShortVersionString</key>' -t '	<key>NSMicrophoneUsageDescription</key>'
+    python3 add-line.py -i ../macos/Runner/Info.plist -s '<key>CFBundleShortVersionString</key>' -t '	<string>$(PRODUCT_NAME) Microphone Usage!</string>'
 
-    python add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <key>com.apple.security.device.camera</key>'
-    python add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <true/>'
-    python add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <key>com.apple.security.device.microphone</key>'
-    python add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <true/>'
-    python add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <key>com.apple.security.network.client</key>'
-    python add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <true/>'
+    python3 add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <key>com.apple.security.device.camera</key>'
+    python3 add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <true/>'
+    python3 add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <key>com.apple.security.device.microphone</key>'
+    python3 add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <true/>'
+    python3 add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <key>com.apple.security.network.client</key>'
+    python3 add-line.py -i ../macos/Runner/DebugProfile.entitlements -s '</dict>' -t '       <true/>'
 
-    python add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <key>com.apple.security.device.camera</key>'
-    python add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <true/>'
-    python add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <key>com.apple.security.device.microphone</key>'
-    python add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <true/>'
-    python add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <key>com.apple.security.network.client</key>'
-    python add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <true/>'
+    python3 add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <key>com.apple.security.device.camera</key>'
+    python3 add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <true/>'
+    python3 add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <key>com.apple.security.device.microphone</key>'
+    python3 add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <true/>'
+    python3 add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <key>com.apple.security.network.client</key>'
+    python3 add-line.py -i ../macos/Runner/Release.entitlements -s '</dict>' -t '       <true/>'
 }
 
 if [ "$CMD" == "create" ];

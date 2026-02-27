@@ -1,6 +1,6 @@
-import 'package:sip_ua/src/parser.dart';
 import 'package:test/test.dart';
 
+import 'package:sip_ua/src/parser.dart';
 import 'data/sip_message.dart';
 
 List<void Function()> testFunctions = <void Function()>[
@@ -10,8 +10,7 @@ List<void Function()> testFunctions = <void Function()>[
         expect(parsed.call_id, 'b3b4vt3rhfruq8nsm980uv');
         expect(parsed.cseq, 1);
         expect(parsed.via_branch, 'z9hG4bK3625642');
-        expect(parsed.from.toString(),
-            '"111" <sip:111_6ackea@tryit.jssip.net>;tag=6mo6me6ask');
+        expect(parsed.from.toString(), '"111" <sip:111_6ackea@tryit.jssip.net>;tag=6mo6me6ask');
         expect(parsed.to.toString(), '<sip:111_6ackea@tryit.jssip.net>');
       }),
   () => test('SIP Message Parser: response.', () {

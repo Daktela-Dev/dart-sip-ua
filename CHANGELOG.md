@@ -1,5 +1,10 @@
 # Changelog
 
+<!-- OUR FORK -->
+[1.0.22]
+
+- Merge with upstream dart-sip-ua (version 1.1.0)
+
 [1.0.21]
 
 - Save Authorization session on register fixes
@@ -48,9 +53,72 @@
 
 - Fixed renegotiation if statement for useUpdate
 
-[1.0.3]
+[1.0.3] (Our first fork version, original package version: 0.5.6 )
 
 - Expose \_to_tag and \_from_tag from RTCSession
+
+
+--------------------------------------------
+[1.1.0] -2025-09-26
+
+* Bump flutter-webrtc to 1.2.0
+* Docs(readme): replace pub.dartlang.org with pub.dev; normalize macOS; update Flutter docs link (#555)
+* Allow setting call-id (#552)
+* Extend configuration for ice gathering process (#550)
+* Setting for call statistics logs (#549)
+* Session-timers fix (#545)
+* Fix: persist 'ws_uri' in `_saveSettings` to enable proper registration (#542)
+* Sip message stateless reply reason fixes #539
+* Chore: removal of unneccesary pushToMaster work flow and import sorting
+* Fix bug for rfc2833. (#534)
+* Sessions keys toList added (#514)
+* Build fixes
+
+[1.0.1] -2024.12.19
+
+* make sure the session terminates by @victortive in https://github.com/flutter-webrtc/dart-sip-ua/pull/485
+* Hold and video upgrade fixed by @mikaelwills in https://github.com/flutter-webrtc/dart-sip-ua/pull/503
+* sip_ua_helper: add sendOptions by @eschmidbauer in https://github.com/flutter-webrtc/dart-sip-ua/pull/476
+* Update callscreen.dart by @HVaidehi in https://github.com/flutter-webrtc/dart-sip-ua/pull/427
+
+
+[1.0.0] - 2024.08.24
+
+* allow to change UA uri in runtime (#425)
+* Overriding intervals for recovery connection (#472)
+* TcpSocket: Implement isConnecting & url (#464)
+* Uri configuration for call operation (#448)
+* Update add-line to python3 (#466)
+* Fixed work of calls on webkit browsers (#444)
+* Upgrade to video call implementation and dark mode (#462)
+* Add example apps. (#457)
+* Remove text media channels in SDP offers (#461)
+* set transport value using socket (#449)
+* Add sendInterval to dtmf (#443)
+* Feature/expose ice transport policy (#441)
+
+[0.6.0] - 2024.05.08
+
+* Add status code to CallState on the progress event by @hiratake55 in https://github.com/flutter-webrtc/dart-sip-ua/pull/374
+* expose rtc_session to/from-tag by @ftsef in https://github.com/flutter-webrtc/dart-sip-ua/pull/378
+* #376: Added `_settings.session_timers_refresh_method` to UaSettings t… by @komaxx in https://github.com/flutter-webrtc/dart-sip-ua/pull/377
+* expose instance_id by @VictorUvarov in https://github.com/flutter-webrtc/dart-sip-ua/pull/395
+* Example app cleanup by @VictorUvarov in https://github.com/flutter-webrtc/dart-sip-ua/pull/394
+* fix: parse expires from string header. by @cloudwebrtc in https://github.com/flutter-webrtc/dart-sip-ua/pull/396
+* Add support for UAConfiguration registrar_server by @VictorUvarov in https://github.com/flutter-webrtc/dart-sip-ua/pull/397
+* Feature/update dependency to intl v19 by @komaxx in https://github.com/flutter-webrtc/dart-sip-ua/pull/414
+* Tcp socket implementation by @mikaelwills in https://github.com/flutter-webrtc/dart-sip-ua/pull/416
+* feat: Adding extraHeaders in RegisterParams, exposing existing functionality via UaSettings() by @luan-evangelista in https://github.com/flutter-webrtc/dart-sip-ua/pull/432
+* add contact_uri as parameter by @pjalbuquerque in https://github.com/flutter-webrtc/dart-sip-ua/pull/426
+
+[0.5.8] - 2023.05.11
+* Allow await on helper start call (#365)
+* Adding params support for sendMessage (#366)
+* Set intl version to the one used by flutter
+
+[0.5.7] - 2023.05.11
+* Add sendMessage to Call
+* Bump version of intl
 
 [0.5.6] - 2023.04.17
 

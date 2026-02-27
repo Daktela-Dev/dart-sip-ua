@@ -11,11 +11,9 @@ import 'grammar.dart';
 import 'logger.dart';
 import 'name_addr_header.dart';
 import 'request_sender.dart';
-import 'sip_message.dart';
+import 'socket_transport.dart';
 import 'timers.dart';
-import 'transport.dart';
 import 'ua.dart';
-import 'uri.dart';
 import 'utils.dart' as utils;
 
 const int MIN_REGISTER_EXPIRES = 10; // In seconds.
@@ -27,7 +25,7 @@ class UnHandledResponse {
 }
 
 class Registrator {
-  Registrator(UA ua, [Transport? transport]) {
+  Registrator(UA ua, [SocketTransport? transport]) {
     int reg_id = 1; // Force reg_id to 1.
 
     _ua = ua;
@@ -57,22 +55,24 @@ class Registrator {
     _contact += ';+sip.ice';
 
     // Custom headers for REGISTER and un-REGISTER.
-    _extraHeaders = <String>[];
+    _extraHeaders = ua.configuration.register_extra_headers;
 
     // Custom Contact header params for REGISTER and un-REGISTER.
     _extraContactParams = '';
 
     // Custom Contact URI params for REGISTER and un-REGISTER.
-    setExtraContactUriParams(ua.configuration.register_extra_contact_uri_params);
+    setExtraContactUriParams(
+        ua.configuration.register_extra_contact_uri_params);
 
     if (reg_id != null) {
       _contact += ';reg-id=$reg_id';
-      _contact += ';+sip.instance="<urn:uuid:${_ua.configuration.instance_id}>"';
+      _contact +=
+          ';+sip.instance="<urn:uuid:${_ua.configuration.instance_id}>"';
     }
   }
 
   late UA _ua;
-  Transport? _transport;
+  SocketTransport? _transport;
   late URI _registrar;
   int? _expires;
   String? _call_id;
@@ -87,7 +87,7 @@ class Registrator {
 
   bool get registered => _registered;
 
-  Transport? get transport => _transport;
+  SocketTransport? get transport => _transport;
 
   void setExtraHeaders(List<String>? extraHeaders) {
     _extraHeaders = extraHeaders ?? <String>[];
@@ -129,19 +129,33 @@ class Registrator {
 
     List<String> extraHeaders = List<String>.from(_extraHeaders ?? <String>[]);
 
-    extraHeaders.add('Contact: $_contact;expires=$_expires$_extraContactParams');
+    extraHeaders
+        .add('Contact: $_contact;expires=$_expires$_extraContactParams');
     extraHeaders.add('Expires: $_expires');
 
     logger.w(_contact);
 
-    OutgoingRequest request = OutgoingRequest(SipMethod.REGISTER, _registrar, _ua, <String, dynamic>{'to_uri': _to_uri, 'call_id': _call_id, 'cseq': _cseq += 1}, extraHeaders);
+    OutgoingRequest request = OutgoingRequest(
+        SipMethod.REGISTER,
+        _registrar,
+        _ua,
+        <String, dynamic>{
+          'to_uri': _to_uri,
+          'call_id': _call_id,
+          'cseq': _cseq += 1
+        },
+        extraHeaders);
 
     EventManager handlers = EventManager();
     handlers.on(EventOnRequestTimeout(), (EventOnRequestTimeout value) {
-      _registrationFailure(UnHandledResponse(408, DartSIP_C.CausesType.REQUEST_TIMEOUT), DartSIP_C.CausesType.REQUEST_TIMEOUT);
+      _registrationFailure(
+          UnHandledResponse(408, DartSIP_C.CausesType.REQUEST_TIMEOUT),
+          DartSIP_C.CausesType.REQUEST_TIMEOUT);
     });
     handlers.on(EventOnTransportError(), (EventOnTransportError value) {
-      _registrationFailure(UnHandledResponse(500, DartSIP_C.CausesType.CONNECTION_ERROR), DartSIP_C.CausesType.CONNECTION_ERROR);
+      _registrationFailure(
+          UnHandledResponse(500, DartSIP_C.CausesType.CONNECTION_ERROR),
+          DartSIP_C.CausesType.CONNECTION_ERROR);
     });
     handlers.on(EventOnAuthenticated(), (EventOnAuthenticated value) {
       _cseq += 1;
@@ -167,7 +181,8 @@ class Registrator {
           _registering = false;
 
           if (!event.response!.hasHeader('Contact')) {
-            logger.d('no Contact header in response to REGISTER, response ignored');
+            logger.d(
+                'no Contact header in response to REGISTER, response ignored');
             return;
           }
 
@@ -176,7 +191,8 @@ class Registrator {
             contacts.add(item['parsed']);
           });
           // Get the Contact pointing to us and update the expires value accordingly.
-          dynamic contact = contacts.firstWhere((dynamic element) => element.uri.user == _ua.contact!.uri!.user);
+          dynamic contact = contacts.firstWhere(
+              (dynamic element) => element.uri.user == _ua.contact!.uri!.user);
 
           if (contact == null) {
             logger.d('no Contact header pointing to us, response ignored');
@@ -191,7 +207,7 @@ class Registrator {
 
           expires ??= _expires;
 
-          expires = num.tryParse(expires) ?? 0;
+          expires = num.tryParse(expires.toString()) ?? 0;
 
           if (expires < MIN_REGISTER_EXPIRES) {
             expires = MIN_REGISTER_EXPIRES;
@@ -213,10 +229,12 @@ class Registrator {
 
           // Save gruu values.
           if (contact.hasParam('temp-gruu')) {
-            _ua.contact!.temp_gruu = contact.getParam('temp-gruu').replaceAll('"', '');
+            _ua.contact!.temp_gruu =
+                contact.getParam('temp-gruu').replaceAll('"', '');
           }
           if (contact.hasParam('pub-gruu')) {
-            _ua.contact!.pub_gruu = contact.getParam('pub-gruu').replaceAll('"', '');
+            _ua.contact!.pub_gruu =
+                contact.getParam('pub-gruu').replaceAll('"', '');
           }
 
           if (!_registered) {
@@ -228,9 +246,12 @@ class Registrator {
         if (status_code.contains(RegExp(r'^423$'))) {
           if (event.response!.hasHeader('min-expires')) {
             // Increase our registration interval to the suggested minimum.
-            _expires = num.tryParse(event.response!.getHeader('min-expires')) as int? ?? 0;
+            _expires = num.tryParse(event.response!.getHeader('min-expires'))
+                    as int? ??
+                0;
 
-            if (_expires! < MIN_REGISTER_EXPIRES) _expires = MIN_REGISTER_EXPIRES;
+            if (_expires! < MIN_REGISTER_EXPIRES)
+              _expires = MIN_REGISTER_EXPIRES;
 
             // Attempt the registration again immediately.
             register();
@@ -238,7 +259,8 @@ class Registrator {
             // This response MUST contain a Min-Expires header field.
             logger.d('423 response received for REGISTER without Min-Expires');
 
-            _registrationFailure(event.response, DartSIP_C.CausesType.SIP_FAILURE_CODE);
+            _registrationFailure(
+                event.response, DartSIP_C.CausesType.SIP_FAILURE_CODE);
           }
         } else {
           String cause = utils.sipErrorCause(event.response!.status_code);
@@ -253,11 +275,11 @@ class Registrator {
     request_sender.send();
   }
 
-  void unregister(bool unregister_all) {
+  Future<bool> unregister(bool unregister_all) async {
     if (_registered == false) {
       logger.d('already unregistered');
 
-      return;
+      return true;
     }
 
     _registered = false;
@@ -268,7 +290,8 @@ class Registrator {
       _registrationTimer = null;
     }
 
-    List<dynamic> extraHeaders = List<dynamic>.from(_extraHeaders ?? <dynamic>[]);
+    List<dynamic> extraHeaders =
+        List<dynamic>.from(_extraHeaders ?? <dynamic>[]);
 
     if (unregister_all) {
       extraHeaders.add('Contact: *$_extraContactParams');
@@ -277,7 +300,9 @@ class Registrator {
     }
 
     if (SIPUAHelper.authSet && SIPUAHelper.sharedPreferencesInitialized) {
-      String auth = EncryptedSharedPreferences.getInstance().getString('webrtc_auth') ?? '';
+      String auth =
+          EncryptedSharedPreferences.getInstance().getString('webrtc_auth') ??
+              '';
       extraHeaders.add(auth);
       EncryptedSharedPreferences.getInstance().remove('webrtc_auth');
       SIPUAHelper.authSet = false;
@@ -285,14 +310,26 @@ class Registrator {
 
     extraHeaders.add('Expires: 0');
 
-    OutgoingRequest request = OutgoingRequest(SipMethod.REGISTER, _registrar, _ua, <String, dynamic>{'to_uri': _to_uri, 'call_id': _call_id, 'cseq': _cseq += 1}, extraHeaders);
+    OutgoingRequest request = OutgoingRequest(
+        SipMethod.REGISTER,
+        _registrar,
+        _ua,
+        <String, dynamic>{
+          'to_uri': _to_uri,
+          'call_id': _call_id,
+          'cseq': _cseq += 1
+        },
+        extraHeaders);
 
     EventManager handlers = EventManager();
+    Completer<bool> completer = Completer<bool>();
     handlers.on(EventOnRequestTimeout(), (EventOnRequestTimeout value) {
       _unregistered(null, DartSIP_C.CausesType.REQUEST_TIMEOUT);
+      completer.complete(false);
     });
     handlers.on(EventOnTransportError(), (EventOnTransportError value) {
       _unregistered(null, DartSIP_C.CausesType.CONNECTION_ERROR);
+      completer.complete(false);
     });
     handlers.on(EventOnAuthenticated(), (EventOnAuthenticated response) {
       // Increase the CSeq on authentication.
@@ -303,17 +340,20 @@ class Registrator {
       String status_code = event.response!.status_code.toString();
       if (utils.test2XX(status_code)) {
         _unregistered(event.response);
+        completer.complete(true);
       } else if (utils.test1XX(status_code)) {
         // Ignore provisional responses.
       } else {
         String cause = utils.sipErrorCause(event.response!.status_code);
         _unregistered(event.response, cause);
+        completer.complete(true);
       }
     });
 
     RequestSender request_sender = RequestSender(_ua, request, handlers);
 
     request_sender.send();
+    return completer.future;
   }
 
   void close() {
