@@ -1,6 +1,12 @@
 # Changelog
 
 <!-- OUR FORK -->
+[1.0.23]
+
+- Removed video upgrade reinvite logic from renegotiate — always use standard reinvite
+- Fixed ICE "closed" state handler — no longer redundantly calls terminate()
+- Skip SDP parse/write cycle when no text media present to avoid unnecessary re-INVITEs
+
 [1.0.22]
 
 - Merge with upstream dart-sip-ua (version 1.1.0)

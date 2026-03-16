@@ -1180,24 +1180,9 @@ class RTCSession extends EventManager implements Owner {
     Map<String, dynamic>? rtcOfferConstraints =
         options['rtcOfferConstraints'] ?? _rtcOfferConstraints;
 
-    Map<String, dynamic> mediaConstraints =
-        options['mediaConstraints'] ?? <String, dynamic>{};
-
-    dynamic sdpSemantics =
-        options['pcConfig']?['sdpSemantics'] ?? 'unified-plan';
-
     if (_state != RtcSessionState.waitingForAck &&
         _state != RtcSessionState.confirmed) {
       return false;
-    }
-
-    bool? upgradeToVideo;
-    try {
-      upgradeToVideo = (options['mediaConstraints']?['video'] != false ||
-              options['mediaConstraints']?['mandatory']?['video'] != null) &&
-          rtcOfferConstraints?['offerToReceiveVideo'] == null;
-    } catch (e) {
-      logger.w('Failed to determine upgrade to video: $e');
     }
 
     if (!_isReadyToReOffer()) {
@@ -1227,21 +1212,11 @@ class RTCSession extends EventManager implements Owner {
         'extraHeaders': options['extraHeaders']
       });
     } else {
-      if (upgradeToVideo ?? false) {
-        _sendVideoUpgradeReinvite(<String, dynamic>{
-          'eventHandlers': handlers,
-          'sdpSemantics': sdpSemantics,
-          'rtcOfferConstraints': rtcOfferConstraints,
-          'mediaConstraints': mediaConstraints,
-          'extraHeaders': options['extraHeaders']
-        });
-      } else {
-        _sendReinvite(<String, dynamic>{
-          'eventHandlers': handlers,
-          'rtcOfferConstraints': rtcOfferConstraints,
-          'extraHeaders': options['extraHeaders']
-        });
-      }
+      _sendReinvite(<String, dynamic>{
+        'eventHandlers': handlers,
+        'rtcOfferConstraints': rtcOfferConstraints,
+        'extraHeaders': options['extraHeaders']
+      });
     }
 
     return true;
@@ -1699,19 +1674,11 @@ class RTCSession extends EventManager implements Owner {
         }
       } else if (state == RTCIceConnectionState.RTCIceConnectionStateClosed) {
         // Connection closed locally, usually via _connection.close() called by terminate()
-        logger.i('ICE Connection State Closed.'); // Use logger.i
-        _iceDisconnectTimer?.cancel(); // Ensure timer is cancelled
-        // Ensure *SIP* session state reflects closure if not already set by terminate()
-        if (_state != RtcSessionState.terminated &&
-            _state != RtcSessionState.canceled) {
-          logger.w(
-              'ICE closed but SIP session state was not terminal. Terminating SIP session now.');
-          terminate(<String, dynamic>{
-            'cause': DartSIP_C.CausesType.WEBRTC_ERROR,
-            'status_code': 487,
-            'reason_phrase': 'ICE Connection Closed'
-          });
-        }
+        logger.i('ICE Connection State Closed.');
+        _iceDisconnectTimer?.cancel();
+        // Do NOT terminate — per W3C spec, ICE "closed" only occurs when
+        // RTCPeerConnection.close() is called (i.e., terminate() already ran).
+        // Calling terminate() again here is redundant and can cause errors.
       } else if (state == RTCIceConnectionState.RTCIceConnectionStateChecking) {
         logger.d('ICE Connection State Checking...'); // Use logger.d
       } else if (state == RTCIceConnectionState.RTCIceConnectionStateNew) {
@@ -3201,6 +3168,13 @@ class RTCSession extends EventManager implements Owner {
   /// WebRTC does not support text media channels, so remove them.
   String? _sdpOfferToWebRTC(String? sdpInput) {
     if (sdpInput == null) {
+      return sdpInput;
+    }
+
+    // Only do parse/write cycle if SDP actually contains text media.
+    // Unnecessary parse/write can subtly alter SDP formatting, causing
+    // the remote side to send a re-INVITE to renegotiate.
+    if (!sdpInput.contains('m=text')) {
       return sdpInput;
     }
 
