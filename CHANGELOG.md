@@ -1,6 +1,12 @@
 # Changelog
 
 <!-- OUR FORK -->
+[1.0.24]
+
+- Expose registration Call-ID through EventRegistered and RegistrationState
+- Bumped no_answer_timeout default to 130 seconds (max configurable in web GUI is 2 minutes)
+- Fixed WebSocket constructor on Flutter Web — pass 'sip'.toJS instead of plain String (flutter-webrtc/dart-sip-ua#579)
+
 [1.0.23]
 
 - Removed video upgrade reinvite logic from renegotiate — always use standard reinvite

@@ -31,7 +31,7 @@ class Settings {
   // Session parameters.
   bool session_timers = true;
   SipMethod session_timers_refresh_method = SipMethod.UPDATE;
-  int no_answer_timeout = 60;
+  int no_answer_timeout = 130;
 
   // Registration parameters.
   bool? register = true;

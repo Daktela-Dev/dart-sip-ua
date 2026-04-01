@@ -240,7 +240,7 @@ class SIPUAHelper extends EventManager {
       _ua!.on(EventRegistered(), (EventRegistered event) {
         logger.d('registered => ${event.cause}');
         _registerState = RegistrationState(
-            state: RegistrationStateEnum.REGISTERED, cause: event.cause);
+            state: RegistrationStateEnum.REGISTERED, cause: event.cause, callId: event.callId);
         _notifyRegistrationStateListeners(_registerState);
       });
 
@@ -777,9 +777,10 @@ enum RegistrationStateEnum {
 }
 
 class RegistrationState {
-  RegistrationState({this.state, this.cause});
+  RegistrationState({this.state, this.cause, this.callId});
   RegistrationStateEnum? state;
   ErrorCause? cause;
+  String? callId;
 }
 
 enum TransportStateEnum {

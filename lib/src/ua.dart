@@ -558,6 +558,7 @@ class UA extends EventManager {
    */
   void registered({required dynamic response}) {
     emit(EventRegistered(
+        callId: response.call_id,
         cause: ErrorCause(
             cause: 'registered',
             status_code: response.status_code,

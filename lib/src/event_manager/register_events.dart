@@ -5,8 +5,9 @@ class EventRegistrationExpiring extends EventType {
 }
 
 class EventRegistered extends EventType {
-  EventRegistered({this.cause});
+  EventRegistered({this.cause, this.callId});
   ErrorCause? cause;
+  String? callId;
 }
 
 class EventRegistrationFailed extends EventType {
