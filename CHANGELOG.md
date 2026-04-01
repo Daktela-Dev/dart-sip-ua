@@ -1,6 +1,10 @@
 # Changelog
 
 <!-- OUR FORK -->
+[1.0.25]
+
+- Fixed hangup crash on web — wrapped getLocalStreams/getRemoteStreams in try-catch as the deprecated API throws on newer Dart SDKs (flutter-webrtc/dart-sip-ua#537)
+
 [1.0.24]
 
 - Expose registration Call-ID through EventRegistered and RegistrationState

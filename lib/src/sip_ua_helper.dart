@@ -607,23 +607,27 @@ class Call {
   void hangup([Map<String, dynamic>? options]) {
     assert(_session != null, 'ERROR(hangup): rtc session is invalid!');
     if (peerConnection != null) {
-      for (MediaStream? stream in peerConnection!.getLocalStreams()) {
-        if (stream == null) return;
-        logger.d(
-            'Stopping local stream with tracks: ${stream.getTracks().length}');
-        for (MediaStreamTrack track in stream.getTracks()) {
-          logger.d('Stopping track: ${track.kind}${track.id} ');
-          track.stop();
+      try {
+        for (MediaStream? stream in peerConnection!.getLocalStreams()) {
+          if (stream == null) return;
+          logger.d(
+              'Stopping local stream with tracks: ${stream.getTracks().length}');
+          for (MediaStreamTrack track in stream.getTracks()) {
+            logger.d('Stopping track: ${track.kind}${track.id} ');
+            track.stop();
+          }
         }
-      }
-      for (MediaStream? stream in peerConnection!.getRemoteStreams()) {
-        if (stream == null) return;
-        logger.d(
-            'Stopping remote stream with tracks: ${stream.getTracks().length}');
-        for (MediaStreamTrack track in stream.getTracks()) {
-          logger.d('Stopping track: ${track.kind}${track.id} ');
-          track.stop();
+        for (MediaStream? stream in peerConnection!.getRemoteStreams()) {
+          if (stream == null) return;
+          logger.d(
+              'Stopping remote stream with tracks: ${stream.getTracks().length}');
+          for (MediaStreamTrack track in stream.getTracks()) {
+            logger.d('Stopping track: ${track.kind}${track.id} ');
+            track.stop();
+          }
         }
+      } catch (e) {
+        logger.e('Error stopping streams during hangup: $e');
       }
     } else {
       logger.d("peerConnection is null, can't stop tracks.");
