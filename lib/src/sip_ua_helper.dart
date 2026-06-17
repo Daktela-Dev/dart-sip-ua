@@ -89,6 +89,11 @@ class SIPUAHelper extends EventManager {
 
   RegistrationState get registerState => _registerState;
 
+  /// Snapshot of the calls the UA is currently tracking. Read-only; used to replay
+  /// an in-flight call to a listener that attached after the call arrived (cold-start
+  /// race), since [addSipUaHelperListener] does not otherwise replay past events.
+  List<Call> get activeCalls => _calls.values.toList();
+
   void stop() async {
     if (_ua != null) {
       _ua!.stop();

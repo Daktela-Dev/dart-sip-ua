@@ -1,6 +1,10 @@
 # Changelog
 
 <!-- OUR FORK -->
+[1.0.26]
+
+- Expose `activeCalls` getter on `SIPUAHelper` — a read-only snapshot of currently-tracked calls so a listener attached *after* a call has already arrived can recover it. sip_ua only notifies listeners present at event time and never replays past events, so on a cold start (iOS VOIP push) where the device registers and the INVITE lands in the ~300 ms before the app attaches its call listener, the incoming call was silently dropped while still ringing server-side. With the existing `registered`/`registerState` getters this lets the app re-deliver the missed registration + in-flight call to a late listener. (flutter-webrtc/dart-sip-ua#367 + #371)
+
 [1.0.25]
 
 - Fixed hangup crash on web — wrapped getLocalStreams/getRemoteStreams in try-catch as the deprecated API throws on newer Dart SDKs (flutter-webrtc/dart-sip-ua#537)
