@@ -24,15 +24,23 @@ class SIPUAWebSocketImpl {
       required WebSocketSettings webSocketSettings}) async {
     handleQueue();
     logger.i('connect $_url, ${webSocketSettings.extraHeaders}, $protocols');
+    HttpClient? client;
     try {
       if (webSocketSettings.allowBadCertificate) {
         /// Allow self-signed certificate, for test only.
         _socket = await _connectForBadCertificate(_url, webSocketSettings);
       } else {
+        if (webSocketSettings.connectionTimeout != null) {
+          client = HttpClient()
+            ..connectionTimeout = webSocketSettings.connectionTimeout;
+        }
         _socket = await WebSocket.connect(_url,
-            protocols: protocols, headers: webSocketSettings.extraHeaders);
+            protocols: protocols,
+            headers: webSocketSettings.extraHeaders,
+            customClient: client);
       }
 
+      _socket!.pingInterval = webSocketSettings.pingInterval;
       onOpen?.call();
       _socket!.listen((dynamic data) {
         onMessage?.call(data);
@@ -41,6 +49,9 @@ class SIPUAWebSocketImpl {
       });
     } catch (e) {
       onClose?.call(500, e.toString());
+    } finally {
+      // An upgraded WebSocket owns its detached socket independently of this client.
+      client?.close();
     }
   }
 
@@ -77,6 +88,7 @@ class SIPUAWebSocketImpl {
       String key = base64.encode(List<int>.generate(16, (_) => r.nextInt(255)));
       SecurityContext securityContext = SecurityContext();
       HttpClient client = HttpClient(context: securityContext);
+      client.connectionTimeout = webSocketSettings.connectionTimeout;
 
       if (webSocketSettings.userAgent != null) {
         client.userAgent = webSocketSettings.userAgent;

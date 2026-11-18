@@ -846,6 +846,12 @@ class RegisterParams {
 }
 
 class WebSocketSettings {
+  /// Native WebSocket ping interval. Null keeps ping disabled; browsers ignore it.
+  Duration? pingInterval;
+
+  /// Native HTTP client's connection timeout. Null keeps the system default.
+  Duration? connectionTimeout;
+
   /// Add additional HTTP headers, such as:'Origin','Host' or others
   Map<String, dynamic> extraHeaders = <String, dynamic>{};
 
