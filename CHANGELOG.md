@@ -1,7 +1,7 @@
 # Changelog
 
 <!-- OUR FORK -->
-[Unreleased]
+[1.0.27]
 
 - Add optional native WebSocket `pingInterval` and `connectionTimeout` settings. Both socket construction paths honor them; defaults keep existing consumers unchanged.
 
